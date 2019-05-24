@@ -1,7 +1,7 @@
 # Capstone---Movielens-Project
 Capstone for the Data Science Certificate
 
-This project is being completed in R version 3.6.0 (_Planting_ of a Tree_)
+This project is being completed in R version 3.6.0 (_Planting of a Tree_)
 
 The submission for the MovieLens project will be three files: 
     1. A report in the form of an Rmd file, 
@@ -45,4 +45,4 @@ Calculate RMSE for the best values of the regularization parameter
 
 Complete the SessionInfo
 
-
+# Data to be downloaded from the folder into existing directories
