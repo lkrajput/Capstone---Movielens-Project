@@ -41,8 +41,8 @@ The movie rating predictions will be compared to the true ratings in the validat
          3. Predict ratings based on both regularized movies & user biases
          4. Compare against the validation (test) set and compute the RMSE
          
-# Calculate RMSE for the best values of the regularization parameter
+Calculate RMSE for the best values of the regularization parameter
 
-# Complete the SessionInfo
+Complete the SessionInfo
 
 
