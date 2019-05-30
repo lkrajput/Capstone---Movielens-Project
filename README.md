@@ -45,4 +45,5 @@ Calculate RMSE for the best values of the regularization parameter
 
 Complete the SessionInfo
 
-# Data to be downloaded from the folder into existing directories
+# Data to be downloaded from the google drive https://drive.google.com/drive/folders/1IZcBBX0OmL9wu9AdzMBFUG8GoPbGQ38D
+Into the Data folder within the existing folder.
