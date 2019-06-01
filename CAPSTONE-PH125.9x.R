@@ -1,4 +1,4 @@
-##
+﻿##
 ## title: "CAPSTONE-PH125.9x"
 ## author: "Laxmansingh Rajput"
 ## date: "5/31/2019"
@@ -27,7 +27,9 @@ library(ggplot2)
 
 set.seed(1, 
          sample.kind = "Rounding") # if using R 3.6.0
-
+##
+##  Retrieve the training and the validation data
+##
 edx <- readRDS("Data/edx.rds")
 validation <- readRDS("Data/validation.rds")
 ##
@@ -197,18 +199,23 @@ kable(select(head(validation, 20),1,2,3,5,6),
 ##
 ##   use cross-validation to pick a λ:
 ##
+##   using the value between 0 and 15 in 0.25 increments
+##
 lambdas <- seq(0, 15, 0.25)
 
-mu <- mean(edx$rating)
-
-
+mu <- mean(edx$rating)   # compute the mean to be used in the function
+##
+##  Find the RMSE for the regularized value and prediction
+##
 rmses <- sapply(lambdas, function(reg_param){
 
   predicted_ratings <- predict_rating(reg_param)          # both of the functions could be combined,
-    
   return(RMSE(predicted_ratings, validation$rating))      # but I kept it separate for readability
-})
 
+})
+##
+##  Plot the regularization parameter against the RMSE
+##
 qplot(lambdas, 
       rmses)  
 ##

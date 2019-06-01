@@ -1,4 +1,4 @@
----
+﻿---
 title: "CAPSTONE-PH125.9x"
 author: "Laxmansingh Rajput"
 date: "5/31/2019"
@@ -15,7 +15,9 @@ knitr::opts_chunk$set(echo = FALSE,
                       message = FALSE, 
                       cache = TRUE, 
                       comment = NA)
-
+##
+##   Libraries used
+##
 library(tidyverse)
 library(kableExtra)
 library(knitr)
@@ -36,7 +38,10 @@ The submission for the MovieLens project will be three files:
 
 The movie rating predictions will be compared to the true ratings in the validation set using RMSE and the report outputs the RMSE.
 
-## EXECUTIVE SUMMARY  
+## EXECUTIVE SUMMARY 
+    Using the regularization method allows us to compute the movie and user biases that 
+      allows the Root Mean Square Error to be below 0.87.    
+ 
     1. Dataset
        a. MovieLens dataset (downloaded as R Version is 3.6.0)
           from the following google drive 
@@ -61,10 +66,14 @@ The movie rating predictions will be compared to the true ratings in the validat
 
 set.seed(1, 
          sample.kind = "Rounding") # if using R 3.6.0
-
+##
+##  Retrieve the training and the validation data
+##
 edx <- readRDS("Data/edx.rds")
 validation <- readRDS("Data/validation.rds")
-
+##
+##  Get the frequency for all ratings
+##
 tab_rating <- data.frame(table(edx$rating))
 names(tab_rating) <- c("Rating", "Frequency")
 
@@ -80,7 +89,9 @@ top_5rated_movies <- edx %>%
 
 names(top_5rated_movies) <- c("Title", "Frequency")
 
-
+##
+##  Rating and frequency
+##
 ratings_in_desc <- edx %>% 
                       group_by(rating) %>% 
                       tally() %>% 
@@ -294,20 +305,24 @@ kable(select(head(validation, 20),1,2,3,5,6),
 ##
 ##   use cross-validation to pick a λ:
 ##
+##
+##   using the value between 0 and 15 in 0.25 increments
+##
 lambdas <- seq(0, 15, 0.25)
 
-mu <- mean(edx$rating)
-
-
+mu <- mean(edx$rating)   # compute the mean to be used in the function
+##
+##  Find the RMSE for the regularized value and prediction
+##
 rmses <- sapply(lambdas, function(reg_param){
 
   predicted_ratings <- predict_rating(reg_param)          # both of the functions could be combined,
-    
   return(RMSE(predicted_ratings, validation$rating))      # but I kept it separate for readability
+
 })
-
-## paste(lambdas, rmses)
-
+##
+##  Plot the regularization parameter against the RMSE
+##
 qplot(lambdas, 
       rmses)  
 ```
