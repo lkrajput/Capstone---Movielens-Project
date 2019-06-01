@@ -1,0 +1,387 @@
+---
+title: "CAPSTONE-PH125.9x"
+author: "Laxmansingh Rajput"
+date: "5/31/2019"
+output:
+  pdf_document: default
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = FALSE, 
+                      warning = FALSE, 
+                      message = FALSE, 
+                      cache = TRUE, 
+                      comment = NA)
+
+library(tidyverse)
+library(kableExtra)
+library(knitr)
+library(ggplot2)
+
+```
+## OBJECTIVES
+
+Creating a movie recommendation system using the MovieLens dataset. Train a machine learning algorithm using the inputs in one subset to predict movie ratings in the validation set.
+
+This project is being completed in R version 3.6.0 (_Planting of a Tree_)
+
+The submission for the MovieLens project will be three files: 
+
+*  A report in the form of an Rmd file
+*  A report in the form of a PDF document knit from your Rmd file 
+*  An Rmd/R script file that generates the predicted movie ratings and calculates RMSE
+
+The movie rating predictions will be compared to the true ratings in the validation set using RMSE and the report outputs the RMSE.
+
+## EXECUTIVE SUMMARY  
+    1. Dataset
+       a. MovieLens dataset (downloaded as R Version is 3.6.0)
+          from the following google drive 
+          <https://drive.google.com/drive/folders/1IZcBBX0OmL9wu9AdzMBFUG8GoPbGQ38D>
+    2. Goals of the project
+       a. Predict the ratings for the validation dataset
+       b. Compute the RMSE
+    3. Key Steps
+       a. Compute the average of the movie ratings
+       b. Calculate the reqularized parameter (lambda) using cross-validation
+       c. Get the lambda that gives the least RMSE
+       d. Use the lambda to predict the ratings
+       e. Compute the RMSE on the predict ratings vs the validation test
+
+\newpage
+
+```{r Read edx set and Validation set, echo=FALSE, message=FALSE}
+
+###################################
+# Read edx set and validation set #
+###################################
+
+set.seed(1, 
+         sample.kind = "Rounding") # if using R 3.6.0
+
+edx <- readRDS("Data/edx.rds")
+validation <- readRDS("Data/validation.rds")
+
+tab_rating <- data.frame(table(edx$rating))
+names(tab_rating) <- c("Rating", "Frequency")
+
+##
+##  Top 5 rated movies
+##
+
+top_5rated_movies <- edx %>% 
+                        group_by(title) %>% 
+                        tally() %>% 
+                        arrange(., desc(n)) %>% 
+                        head(.,5)
+
+names(top_5rated_movies) <- c("Title", "Frequency")
+
+
+ratings_in_desc <- edx %>% 
+                      group_by(rating) %>% 
+                      tally() %>% 
+                      arrange(., desc(n))
+
+names(ratings_in_desc) <- c("Ratings", "Frequency")
+
+DESCRIPTION <- c("Observations", 
+                 "Variables", 
+                 "Unique User IDs", 
+                 "Unique Movie IDs", 
+                 "Unique Ratings", 
+                 "Mean Rating")
+
+VALUES <- rbind(formatC(as.numeric(dim(edx)[1]),format="d"),
+                    formatC(as.numeric(dim(edx)[2]),format="d"),
+                    formatC(as.numeric(n_distinct(edx$userId)),format="d"),
+                    formatC(as.numeric(n_distinct(edx$movieId)),format="d"),
+                    formatC(as.numeric(n_distinct(edx$rating)),format="d"),
+                    formatC(as.numeric(mean(edx$rating)),format="f",digits=6))
+##
+##  Create table with the dataset information
+##
+dataset_information <- data.frame(DESCRIPTION, 
+                                  VALUES)
+
+
+```
+
+## METHOD/ANALYSIS SECTION
+* Explore the data
+* Explore the rating information
+* Explore the top rated movies
+* Model selection - use the regularization method on the rating based on movieID and userID biases
+
+#### FUNCTIONS TO BE USED
+* RMSE <- function(true_ratings, predicted_ratings)
+               sqrt(mean((true_ratings - predicted_ratings)^2))
+
+* predict_rating <- compute the movie and user biases, and return the predicted ratings based on the
+                     regularization parameter.
+
+
+```{r Functions, echo=FALSE, message=FALSE}
+
+##
+##  Root mean square error function
+##
+RMSE <- function(true_ratings, predicted_ratings){
+        sqrt(mean((true_ratings - predicted_ratings)^2))
+}
+##
+##  Predicted rating based on the movie and user biases
+##
+predict_rating <- function(reg_param){
+  ##
+  ##  movie bias based on movieID (group_by) 
+  ##
+  movie_bias <- edx %>% 
+    group_by(movieId) %>%
+    summarize(movie_bias = sum(rating - mu)/(n()+reg_param))  # movie bias 
+  ##
+  ##  user bias based on userID (group_by) 
+  ##     movie bias also being taken into consideration
+  ##
+  user_bias <- edx %>% 
+    left_join(movie_bias, 
+              by="movieId") %>%
+    group_by(userId) %>%
+    summarize(user_bias = sum(rating - movie_bias - mu)/(n()+reg_param)) # User bias
+  ##
+  ##  return the prediction from the function
+  ##
+  return(validation %>% 
+             left_join(movie_bias, 
+                       by = "movieId") %>%
+             left_join(user_bias, 
+                       by = "userId") %>%
+             mutate(pred = mu + movie_bias + user_bias) %>%     # predictions for the movies
+             pull(pred))                                        # extract only the prediction 
+  
+}
+
+
+
+```
+
+
+#### EXPLORE THE DATASET
+
+We can examine the edx data by using R's `glimpse` command:
+
+```{r glimpse}
+glimpse(edx)
+```
+
+Here we see that we have a data frame, accessible at `edx`:
+
+```{r head(edx)}
+head(edx, 6)
+```
+
+\newpage
+
+#### Understanding Variables 
+
+1. The list of the variables.
+
+```{r Explore the dataset, echo=FALSE}
+
+kable(t(variable.names(edx)), 
+      caption = "Variable Names") %>%  
+  kable_styling(bootstrap_options = c("striped", "hover"), 
+                full_width = F, latex_options = "hold_position")
+
+```
+
+2. Other information regarding the dataset - Observations, variables, unique values, and mean rating
+
+```{r Variable Information, echo=FALSE}
+options(scipen=999)
+
+kable(dataset_information, align = c("l", "r"),
+      caption = "Variable Information") %>%  
+  kable_styling(bootstrap_options = c("striped", "hover"), 
+                full_width = F, 
+                latex_options = "hold_position")
+
+ggplot(tab_rating, aes(Rating, Frequency)) + 
+  geom_bar(stat = "identity", fill = "blue")  +
+  ggtitle("Rating Information")
+  
+```
+
+\newpage
+
+3. Rating information 
+
+```{r Rating Information, echo=FALSE}
+
+kable(t(tab_rating), align=rep('c', 7),
+      caption = "Rating Information") %>%  
+  kable_styling(bootstrap_options = c("striped", 
+                                      "hover"), 
+                full_width = F, 
+                latex_options = "hold_position") %>%
+  footnote(general = "   Overall Summary of the ratings. ",
+           number = c("     Rating ranges from 0.5 to 5 in 0.5 steps "))
+```
+
+```{r Rating in reverse order, echo=FALSE}
+
+kable(ratings_in_desc, 
+    caption = "Rating in reverse order") %>%  
+  kable_styling(bootstrap_options = c("striped", "hover"), 
+                full_width = F, latex_options = "hold_position")
+
+```
+
+
+4. Five most rated movies
+
+```{r Top 5 rated movies, echo=FALSE}
+
+kable(top_5rated_movies, 
+      caption = "Top 5 rated movies") %>%  
+  kable_styling(bootstrap_options = c("striped", "hover"), 
+                full_width = F, 
+                latex_options = "hold_position")
+```
+
+\newpage
+
+5. edx dataset
+
+```{r edx dataset, echo=FALSE}
+kable(select(head(edx, 20),1,2,3,5,6),
+      caption = "edx Dataset (Snapshot)") %>%  
+  kable_styling(bootstrap_options = c("striped", "hover"), 
+                full_width = F, 
+                latex_options = c("scale_down","hold_position"))
+
+```
+
+\newpage
+
+6. validation dataset
+
+```{r validation dataset, echo=FALSE}
+kable(select(head(validation, 20),1,2,3,5,6),
+      caption = "validation Dataset (Snapshot)") %>%  
+  kable_styling(bootstrap_options = c("striped", "hover"), 
+                full_width = F, 
+                latex_options = c("scale_down","hold_position"))
+
+```
+
+\newpage
+
+##   CROSS-VALIDATION TO PICK A REGULARIZATION PARAMETER (LAMBDA)
+####             MOVIE + USER EFFECT
+    Use sapply function to return a vector and then retrieve the 
+      parameter that gives the minimum RMSE
+         1. Calculate the regularized bias for each movies
+         2. Calculate the regularized bias for each user
+         3. Predict ratings based on both regularized movies & user biases
+         4. Compare against the validation (test) set and compute the RMSE
+
+
+```{r cross-validation to pick a regularization paramater (lambda), echo=FALSE}
+##
+##   use cross-validation to pick a λ:
+##
+lambdas <- seq(0, 15, 0.25)
+
+mu <- mean(edx$rating)
+
+
+rmses <- sapply(lambdas, function(reg_param){
+
+  predicted_ratings <- predict_rating(reg_param)          # both of the functions could be combined,
+    
+  return(RMSE(predicted_ratings, validation$rating))      # but I kept it separate for readability
+})
+
+## paste(lambdas, rmses)
+
+qplot(lambdas, 
+      rmses)  
+```
+
+\newpage
+
+##  RESULTS SECTION
+*  Best parameter
+*  Regularization parameters and RMSE
+
+```{r RESULTS SECTION, echo=FALSE, fig.height=10, fig.width=7}
+
+paste("Best regularization parameter: ", 
+      lambdas[which.min(rmses)])
+
+lambdas_rmses <- data.frame(lambdas, rmses)
+names(lambdas_rmses) <- c("LAMBDAS", "RMSE")
+
+library(gridExtra)
+library(grid)
+
+x <- lambdas_rmses[1:31,]
+y <- lambdas_rmses[32:61,]
+##
+##   Using grid arrange so that we can display all the information
+##
+grid.arrange(tableGrob(x), 
+             tableGrob(y), 
+             ncol = 2,
+             top = textGrob("Regularization parameters and RMSE",
+                            x = 0, # starts far left
+                            y = 0.5, # experiment with vertical placement
+                            just = "left", # left-aligned,
+                            gp = gpar(fontsize = 18) # bigger font
+             ))
+
+
+```
+
+\newpage
+
+##  CONCLUSION SECTION
+*  Best RMSE
+*  Some predicted ratings 
+
+```{r CONCLUSION SECTION, echo=FALSE}
+##
+##   Select the best regularization parameter to get the prediction
+##       and compute RMSE based on the prediction against the validation dataset
+##
+reg_param <- lambdas[which.min(rmses)]  
+predicted_ratings <- predict_rating(reg_param)
+    
+paste("Best RMSE: ", RMSE(predicted_ratings, validation$rating))
+
+```
+
+## PREDICTED RATING (SNAPSHOT)
+
+```{r Predicted Ratings, echo=FALSE}
+kable(select((cbind(validation, predicted_ratings) %>% head(20)), 1,2,3,5,7),
+      caption = "PREDICTED RATINGS (Snapshot)") %>%  
+  kable_styling(bootstrap_options = c("striped", "hover"), 
+                full_width = F, latex_options = "hold_position")
+
+```
+
+\newpage
+
+##  Information About The Current R Session
+
+```{r SESSION INFORMATION SECTION, echo=FALSE}
+
+sessionInfo()
+
+
+```
